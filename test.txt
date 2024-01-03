@@ -1,0 +1,43 @@
+using System;
+using System.Data;
+using System.Data.SqlClient;
+namespace SimpleSql {
+    class CreateTable {
+        [STAThread]
+        static void Main(string[] args) {
+            // Make a SqlConnection and the Connection string as an argument
+            SqlConnection conn = new SqlConnection("Data Source=computer_name;" + "Initial Catalog=database_name;" + "User ID=sa;" + "Password=pass;");
+            /* Next thing we will do is make a sqlcommand so
+             * we can exucute our query
+             */
+            SqlCommand cmd = new SqlCommand();
+            // We could give this as argument but that won't make our code real clear
+            cmd.CommandTimeout = 60; //
+            cmd.Connection = conn; // Sets wich connection you want to use
+            cmd.CommandType = CommandType.Text; // Sets the command type to use
+            cmd.CommandText = "CREATE TABLE simplesql " + "(" + "simple_id int," + "simple_text text" + ")";
+            /* Why this approach you could write it in one line right???
+             * Yes you can you coudl make it like this
+             * "CREATE TABLE simplesql ( simple_id int, simple_text text )";
+             * most people would do it the simple way inclusive me :)
+             * but I want to make it really clear how to do it right
+             */
+            // Next We will open the connection and make the query
+            try {
+                conn.Open(); // Open the connection if it fails
+                // it will let you know with an exception
+                if (conn.State == ConnectionState.Open) {
+                    // Execute the query for this nothing is returned
+                    cmd.ExecuteScalar();
+                    Console.WriteLine("Table is Created");
+                }
+            } catch (Exception exp) {
+                Console.Write(exp.Message);
+            } finally {
+                conn.Close(); // close the connection
+            }
+            Console.WriteLine("Press any key to quite");
+            Console.Read();
+        }
+    }
+}
