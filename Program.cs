@@ -1,6 +1,8 @@
-using System.Data;
-using System.Data.SqlClient;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using JsonSubTypes;
+
 namespace project
 {
     class Program
@@ -10,32 +12,52 @@ namespace project
 
             Database.Execute(Database.Start());
 
-            var AllowedOrigins = "AllowedOrigins";
-
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(
-
+                options => {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                        ValidAudience = builder.Configuration["Jwt:Audience"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+                    };
+                }
             );
 
             builder.Services.AddCors(options =>
                 {
-                options.AddPolicy(name: AllowedOrigins,
+                options.AddDefaultPolicy(
                                 policy  =>
                                 {
-                                    policy.WithOrigins("http://localhost:5173"); // add the allowed origins
+                                    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
                                 });
                 });
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddControllers().AddNewtonsoftJson(options =>
+            {
+                
+                options.SerializerSettings.Converters.Add(
+                JsonSubtypesConverterBuilder
+                .Of(typeof(Task),"Discriminator")
+                .RegisterSubtype(typeof(ProjectTask), TypesOfTasks.Project)
+                .RegisterSubtype(typeof(MeetingTask), TypesOfTasks.Meeting)
+                .RegisterSubtype(typeof(DelegationTask), TypesOfTasks.Delegation)
+                .SerializeDiscriminatorProperty()
+                .Build()
+                );
+                    });
+
+                    builder.Services.AddEndpointsApiExplorer();
+                    builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+
             if (app.Environment.IsDevelopment())
             {
             app.UseSwagger();
@@ -44,11 +66,13 @@ namespace project
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
+
             app.UseAuthorization();
 
             app.MapControllers();
 
-            app.UseCors(AllowedOrigins);
+            app.UseCors();
 
             app.Run();
         }
